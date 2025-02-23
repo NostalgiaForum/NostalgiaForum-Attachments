@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NostalgiaForum Attachments</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.css">
+    <style>
+        .main.container { margin-top: 6em; }
+        .ui.file.list { margin-top: 2em; }
+        .file-actions { float: right; }
+        .filters { margin-bottom: 1em; }
+        .filter-group { display: inline-block; margin-right: 2em; }
+    </style>
+</head>
+<body>
+    <div class="ui fixed inverted blue menu">
+        <div class="ui container">
+            <a href="index.html" class="header item">NostalgiaForum Attachments</a>
+            <div class="right menu">
+                <div class="item">
+                    <div class="ui icon input">
+                        <input type="text" placeholder="Search..." id="search">
+                        <i class="search icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="ui main container">
+        <div class="ui segment">
+            <div class="filters">
+                <div class="filter-group">
+                    <label><input type="checkbox" checked data-type="archives"> Archives (zip, rar)</label>
+                </div>
+                <div class="filter-group">
+                    <label><input type="checkbox" checked data-type="images"> Images (jpg, jpeg, png)</label>
+                </div>
+                <div class="filter-group">
+                    <label><input type="checkbox" checked data-type="mods"> Mods (js, mod)</label>
+                </div>
+                <div class="filter-group">
+                    <label><input type="checkbox" checked data-type="jar"> JAR files</label>
+                </div>
+                <div class="filter-group">
+                    <label><input type="checkbox" checked data-type="plugins"> Plugins (php, phar, pmf)</label>
+                </div>
+                <div class="filter-group">
+                    <label><input type="checkbox" checked data-type="apk"> APK files</label>
+                </div>
+            </div><br>
+            <div class="ui relaxed divided list" id="files"></div>
+        </div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.js"></script>
+    <script>
+        const h = '93603f2d2de6ac457727e5fe71aee869b873abc0';
+        const baseUrl = `https://raw.githubusercontent.com/NostalgiaForum/nostalgiaforum.github.io/${h}/www.nostalgiaforum.xyz`;
+
+        const fileTypes = {
+            archives: ['zip', 'rar'],
+            images: ['jpg', 'jpeg', 'png'],
+            mods: ['js', 'mod'],
+            jar: ['jar'],
+            plugins: ['php', 'phar', 'pmf'],
+            apk: ['apk']
+        };
+
+        async function loadFiles(search = '') {
+            try {
+                const res = await fetch(`https://api.github.com/repos/NostalgiaForum/nostalgiaforum.github.io/contents/www.nostalgiaforum.xyz?ref=${h}`);
+                const files = await res.json();
+                
+                const enabledTypes = Object.entries(fileTypes)
+                    .filter(([type]) => document.querySelector(`[data-type="${type}"]`).checked)
+                    .flatMap(([, exts]) => exts);
+
+                document.getElementById('files').innerHTML = files
+                    .filter(f => {
+                        const ext = f.name.split('.').pop().toLowerCase();
+                        return f.type === 'file' && 
+                               !f.name.endsWith('.html') && 
+                               !f.name.endsWith('.css') &&
+                               enabledTypes.includes(ext) &&
+                               f.name.toLowerCase().includes(search.toLowerCase());
+                    })
+                    .map(f => `
+                        <div class="item">
+                            <i class="large ${getIcon(f.name)} middle aligned icon"></i>
+                            <div class="content">
+                                <a class="header" href="${baseUrl}/${f.name}" download>${f.name}</a>
+                                <div class="file-actions">
+                                    <button class="ui icon button" onclick="download('${f.name}')">
+                                        <i class="download icon"></i>
+                                    </button>
+                                    <button class="ui icon button" onclick="copy('${baseUrl}/${f.name}')">
+                                        <i class="linkify icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('') || '<div class="item">No files found</div>';
+            } catch (error) {
+                document.getElementById('files').innerHTML = '<div class="item">Error loading files</div>';
+            }
+        }
+
+        function getIcon(name) {
+            return {
+                'php': 'php',
+                'js': 'js',
+                'zip': 'file archive outline',
+                'jar': 'coffee',
+                'mod': 'file alternative outline',
+                'png': 'file image outline',
+                'jpg': 'file image outline',
+                'jpeg': 'file image outline',
+                'apk': 'android',
+                'phar': 'php',
+                'pmf': 'file alternative outline',
+                'rar': 'file archive outline'
+            }[name.split('.').pop().toLowerCase()] || 'file outline';
+        }
+
+        function download(name) { location.href = `${baseUrl}/${name}`; }
+        function copy(url) { navigator.clipboard.writeText(url).then(() => alert('Link copied!')); }
+
+        document.getElementById('search').oninput = e => loadFiles(e.target.value);
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.onchange = () => loadFiles(document.getElementById('search').value);
+        });
+        loadFiles();
+    </script>
+</body>
+</html>
